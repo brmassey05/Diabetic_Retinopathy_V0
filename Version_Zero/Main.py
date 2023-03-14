@@ -1,18 +1,18 @@
-import cv2
 import pandas as pd
 import os
-import random
-import json
-from typing import *
-from tqdm import tqdm
-from PIL import Image
+#import cv2
+#import random
+#import json
+#from typing import *
+#from tqdm import tqdm
+#from PIL import Image
 
 # PyTorch related
-import torch
-import torchvision
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+#import torch
+#import torchvision
+#import torch.nn as nn
+#import torch.nn.functional as F
+#import torch.optim as optim
 
 # Scallop related
 import scallopy
