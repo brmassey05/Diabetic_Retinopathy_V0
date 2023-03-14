@@ -1,18 +1,18 @@
 import pandas as pd
 import os
-#import cv2
-#import random
-#import json
-#from typing import *
-#from tqdm import tqdm
-#from PIL import Image
+import cv2
+import random
+import json
+from typing import *
+from tqdm import tqdm
+from PIL import Image
 
 # PyTorch related
-#import torch
-#import torchvision
-#import torch.nn as nn
-#import torch.nn.functional as F
-#import torch.optim as optim
+import torch
+import torchvision
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 
 # Scallop related
 import scallopy
@@ -22,7 +22,7 @@ def retrieve_data():
   print(len(data))
   return trainLabels
 
-"""TO DO: Modify this to match the current dataset being utilized.
+"""TO DO: Modify this to match the current dataset being utilized."""
 class HemorrhageDataset(torch.utils.data.Dataset):
   def __init__(self, train: bool = True):
     split = "train" if train else "test"
@@ -171,7 +171,7 @@ class Trainer():
     for epoch in range(1, n_epochs + 1):
       self.train_epoch(epoch)
       self.test_epoch(epoch)
-
+"""
 # Parameters
 n_epochs = 10
 batch_size = 32
