@@ -18,7 +18,7 @@ import torch.optim as optim
 import scallopy
 def retrieve_data():
   trainLabels = pd.read_csv("/data3/masseybr/trainLabels.csv")
-  data = [x for x in os.listdir(f"/data3/masseybr/train")]
+  data = [x for x in os.listdir('/data3/masseybr/train')]
   print(len(data))
   return trainLabels
 
