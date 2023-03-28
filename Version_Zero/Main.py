@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 import cv2
+import numpy as np
+from sklearn.metrics import accuracy_score, precision_score, recall_score
 import random
 import json
 from typing import *
@@ -14,40 +16,44 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+
 # Scallop related
 import scallopy
-def retrieve_data():
-  trainLabels = pd.read_csv("/data3/masseybr/trainLabels.csv")
-  data = [x for x in os.listdir('/data3/masseybr/train')]
-  print(len(data))
-  return trainLabels
 
-"""TO DO: Modify this to match the current dataset being utilized."""
+def retrieve_im_data():
+  data = [x for x in os.listdir('/data3/masseybr/train')]
+  final_res = []
+  trainLabels = pd.read_csv("/data3/masseybr/trainLabels.csv").values.tolist()
+  for i in range(len(data)):
+    final_res.append((data[i], trainLabels[i]))
+
+  return final_res
+
 class HemorrhageDataset(torch.utils.data.Dataset):
-  def __init__(self, train: bool = True):
-    split = "train" if train else "test"
-    self.data = [x for x in os.path.join(f"/data3/masseybr/{split}")]
-    #self.metadata = json.load(open(os.path.join(f"data3/masseybr/{split}.json")))
-    self.img_transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(), torchvision.transforms.Normalize((0.5,), (1,))])
+  def __init__(self, images, train: bool = True):
+    self.images = images
+    self.train = train
 
   def __len__(self):
-    return len(self.data)
+    return len(self.images)
 
   def __getitem__(self, idx):
-    datapoint = self.metadata[idx]
-    imgs = []
-    for img_path in datapoint["img_paths"]:
-      img_full_path = os.path.join("hwf/symbols", img_path)
-      img = Image.open(img_full_path).convert("L")
-      img = self.img_transform(img)
-      imgs.append(img)
-    res = datapoint["res"]
-    return (tuple(imgs), res)
+    img = self.images[idx]
+    # Convert image to tensor and normalize
+    img_tensor = torchvision.transforms.ToTensor()(img)
+    img_tensor = torchvision.transforms.Normalize((0.5,), (1,))(img_tensor)
+    # Pass image through neural network to identify contours
+    # Replace this with your own neural network model
+    contours = cv2.findContours(np.array(img), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[-2]
+    # Return identified contours
+    return img_tensor, contours
 
 
-def hemorrhage_loader(batch_size, hemorrhageDatset):
-  train_loader = torch.utils.data.DataLoader(HemorrhageDataset(train=True), batch_size=batch_size, shuffle=True)
-  test_loader = torch.utils.data.DataLoader(HemorrhageDataset(train=False), batch_size=batch_size, shuffle=True)
+def hemorrhage_loader(batch_size, images):
+  dataset_train = HemorrhageDataset(images, train=True)
+  dataset_test = HemorrhageDataset(images, train=False)
+  train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
+  test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=True)
   return train_loader, test_loader
 
 def identify_contours(image):
@@ -73,12 +79,12 @@ def identify_contours(image):
     return contours
 
 class ConvolutionNeuralNet(nn.Module):
-  def __init__(self, num_classes):
+  def __init__(self, 2):
     super(ConvolutionNeuralNet, self).__init__()
     self.conv1 = nn.Conv2d(1, 32, 3, stride = 1, padding = 1)
     self.conv2 = nn.Conv2d(32, 64, 3, stride = 1, padding = 1)
     self.fc1 = nn.Linear(7744, 128)
-    self.fc2 = nn.Linear(128, num_classes)
+    self.fc2 = nn.Linear(128, 2)
 
   def forward(self, x):
     x = F.max_pool2d(self.conv1(x), 2)
@@ -102,23 +108,32 @@ class HemorrhageNet(nn.Module):
 
     # Scallop Context
     self.scl_ctx = scallopy.ScallopContext("difftopkproofs")
-
-    # ==== YOUR CODE START HERE ====
-    #
-    # TODO: Setup the Scallop Context so that it contains relations to hold digit and symbol distributions
-    #
-    # ==== YOUR CODE END HERE ====
+    self.scl_ctx.add_program("""
+    type hemorrhage(contour_id: usize, is_hemorrhage: bool)
+    type severity(g: i8)
+    rel num_hemorrhage(x) = x := count(id: hemorrhage(id, true))
+    rel severity(0) = num_hemorrhage(0)
+    rel severity(1) = num_hemorrhage(n), n > 0, n <= 2
+    rel severity(2) = num_hemorrhage(n), n > 2, n <= 4
+    rel severity(3) = num_hemorrhage(n), n > 4
+    """)
 
     # The Scallop module to evaluate the expression, taking neural network outputs
     # The output will be integers ranging from -9 (if you have `0 - 9`) to 81 (if you have `9 * 9`)
     # This suggests that our `forward` function will return tensors of dimension 91
-    self.compute = self.scl_ctx.forward_function("result", output_mapping=list(range(-9, 82)))
+    self.compute = self.scl_ctx.forward_function("severity", output_mapping=list(range(5)))
 
   def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
     # ==== YOUR CODE START HERE ====
     #
     # TODO: Write your code to invoke the CNNs and our Scallop module to evaluate the hand-written expression
-    return None
+    hemorrhage_distrs = [contour for contour in x]
+
+    hemorrhages = torch.cat(tuple(hemorrhage_distrs), dim=1)
+
+    result = self.compute(hemorrhages)
+
+    return result
     #
     # ==== YOUR CODE END HERE ====
 
@@ -135,55 +150,32 @@ class Trainer():
     gt = torch.stack([torch.tensor([1.0 if output_mapping[i] == t else 0.0 for i in range(dim)]) for t in ground_truth])
     return F.binary_cross_entropy(output, gt)
 
-  def train_epoch(self, epoch):
-    self.network.train()
-    train_loss = 0.0
-    iter = tqdm(self.train_loader, total=len(self.train_loader))
-    for (batch_id, (data, target)) in enumerate(iter):
-      self.optimizer.zero_grad()
-      output = self.network(data)
-      loss = self.loss(output, target)
-      loss.backward()
-      self.optimizer.step()
-      train_loss += loss.item()
-      avg_loss = train_loss / (batch_id + 1)
-      iter.set_description(f"[Train Epoch {epoch}] Batch Loss: {loss.item():.4f}, Avg Loss: {avg_loss:.4f}")
+  def train_model(model, train_loader, test_loader, num_epochs, learning_rate):
+    # Set up loss function and optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-  def test_epoch(self, epoch):
-    self.network.eval()
-    num_items = 0
-    test_loss = 0
-    correct = 0
-    with torch.no_grad():
-      iter = tqdm(self.test_loader, total=len(self.test_loader))
-      for (batch_id, (data, target)) in enumerate(iter):
-        output = self.network(data)
-        test_loss += self.loss(output, target).item()
-        avg_loss = test_loss / (batch_id + 1)
-        pred = output.data.max(1, keepdim=True)[1] - 9
-        correct += pred.eq(target.data.view_as(pred)).sum()
-        num_items += pred.shape[0]
-        perc = 100. * correct / num_items
-        iter.set_description(f"[Test Epoch {epoch}] Avg loss: {avg_loss:.4f}, Accuracy: {correct}/{num_items} ({perc:.2f}%)")
+    # Training loop
+    for epoch in range(num_epochs):
+        model.train()
+        for images, labels in train_loader:
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
 
-  def train(self, n_epochs):
-    self.test_epoch(0)
-    for epoch in range(1, n_epochs + 1):
-      self.train_epoch(epoch)
-      self.test_epoch(epoch)
-"""
-# Parameters
-n_epochs = 10
-batch_size = 32
-learning_rate = 0.001
-seed = 1234
+        # Test model after each epoch
+        model.eval()
+        with torch.no_grad():
+            total_loss = 0
+            total_correct = 0
+            for images, labels in test_loader:
+                outputs = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total_loss += criterion(outputs, labels).item()
+                total_correct += (predicted == labels).sum().item()
+            avg_loss = total_loss / len(test_loader)
+            avg_acc = total_correct / len(test_loader.dataset)
+            print(f"Epoch {epoch+1} | Validation Loss: {avg_loss:.4f} | Validation Accuracy: {avg_acc:.4f}")
 
-# Random seed
-torch.manual_seed(seed)
-random.seed(seed)
-
-# Dataloaders
-train_loader, test_loader = hemorrhage_loader(batch_size)
-trainer = Trainer(train_loader, test_loader, learning_rate)
-trainer.train(n_epochs)"""
-retrieve_data()
