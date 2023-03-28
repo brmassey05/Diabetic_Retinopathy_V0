@@ -79,7 +79,7 @@ def identify_contours(image):
     return contours
 
 class ConvolutionNeuralNet(nn.Module):
-  def __init__(self, 2):
+  def __init__(self):
     super(ConvolutionNeuralNet, self).__init__()
     self.conv1 = nn.Conv2d(1, 32, 3, stride = 1, padding = 1)
     self.conv2 = nn.Conv2d(32, 64, 3, stride = 1, padding = 1)
