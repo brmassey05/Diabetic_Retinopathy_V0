@@ -26,8 +26,7 @@ def retrieve_im_data():
   trainLabels = pd.read_csv("/data3/masseybr/trainLabels.csv").values.tolist()
   for i in range(len(data)):
     final_res.append((data[i], trainLabels[i]))
-
-  return final_res
+  return final_res, data, trainLabels
 
 class HemorrhageDataset(torch.utils.data.Dataset):
   def __init__(self, images, train: bool = True):
@@ -137,7 +136,7 @@ class HemorrhageNet(nn.Module):
     #
     # ==== YOUR CODE END HERE ====
 
-class Trainer():
+class HemorrhageTrainer():
   def __init__(self, train_loader, test_loader, learning_rate):
     self.network = HemorrhageNet()
     self.optimizer = optim.Adam(self.network.parameters(), lr=learning_rate)
@@ -145,37 +144,62 @@ class Trainer():
     self.test_loader = test_loader
 
   def loss(self, output, ground_truth):
-    output_mapping = [0,1,2,3,4]
+    output_mapping = list(range(-9, 82))
     (_, dim) = output.shape
     gt = torch.stack([torch.tensor([1.0 if output_mapping[i] == t else 0.0 for i in range(dim)]) for t in ground_truth])
     return F.binary_cross_entropy(output, gt)
 
-  def train_model(model, train_loader, test_loader, num_epochs, learning_rate):
-    # Set up loss function and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+  def train_epoch(self, epoch):
+    self.network.train()
+    train_loss = 0.0
+    iter = tqdm(self.train_loader, total=len(self.train_loader))
+    for (batch_id, (data, target)) in enumerate(iter):
+      self.optimizer.zero_grad()
+      output = self.network(data)
+      loss = self.loss(output, target)
+      loss.backward()
+      self.optimizer.step()
+      train_loss += loss.item()
+      avg_loss = train_loss / (batch_id + 1)
+      iter.set_description(f"[Train Epoch {epoch}] Batch Loss: {loss.item():.4f}, Avg Loss: {avg_loss:.4f}")
 
-    # Training loop
-    for epoch in range(num_epochs):
-        model.train()
-        for images, labels in train_loader:
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+  def test_epoch(self, epoch):
+    self.network.eval()
+    num_items = 0
+    test_loss = 0
+    correct = 0
+    with torch.no_grad():
+      iter = tqdm(self.test_loader, total=len(self.test_loader))
+      for (batch_id, (data, target)) in enumerate(iter):
+        output = self.network(data)
+        test_loss += self.loss(output, target).item()
+        avg_loss = test_loss / (batch_id + 1)
+        pred = output.data.max(1, keepdim=True)[1] - 9
+        correct += pred.eq(target.data.view_as(pred)).sum()
+        num_items += pred.shape[0]
+        perc = 100. * correct / num_items
+        iter.set_description(f"[Test Epoch {epoch}] Avg loss: {avg_loss:.4f}, Accuracy: {correct}/{num_items} ({perc:.2f}%)")
 
-        # Test model after each epoch
-        model.eval()
-        with torch.no_grad():
-            total_loss = 0
-            total_correct = 0
-            for images, labels in test_loader:
-                outputs = model(images)
-                _, predicted = torch.max(outputs.data, 1)
-                total_loss += criterion(outputs, labels).item()
-                total_correct += (predicted == labels).sum().item()
-            avg_loss = total_loss / len(test_loader)
-            avg_acc = total_correct / len(test_loader.dataset)
-            print(f"Epoch {epoch+1} | Validation Loss: {avg_loss:.4f} | Validation Accuracy: {avg_acc:.4f}")
+  def train(self, n_epochs):
+    self.test_epoch(0)
+    for epoch in range(1, n_epochs + 1):
+      self.train_epoch(epoch)
+      self.test_epoch(epoch)
 
+# Parameters
+n_epochs = 3
+batch_size = 32
+learning_rate = 0.001
+seed = 1234
+
+# Random seed
+torch.manual_seed(seed)
+random.seed(seed)
+
+# Retrieve Images
+myimageset, images, labels = retrieve_im_data()
+
+# Dataloaders
+train_loader, test_loader = hemorrhage_loader(batch_size, myimageset)
+trainer = HemorrhageTrainer(train_loader, test_loader, learning_rate)
+trainer.train(n_epochs)
