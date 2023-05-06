@@ -198,6 +198,7 @@ random.seed(seed)
 
 # Retrieve Images
 myimageset, images, labels = retrieve_im_data()
+print(myimageset[0:10])
 
 # Dataloaders
 train_loader, test_loader = hemorrhage_loader(batch_size, myimageset)
