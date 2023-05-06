@@ -173,6 +173,7 @@ class HemorrhageTrainer():
     correct = 0
     with torch.no_grad():
       iter = tqdm(self.test_loader, total=len(self.test_loader))
+      print(iter)
       for (batch_id, (data, target)) in enumerate(iter):
         output = self.network(data)
         test_loss += self.loss(output, target).item()
