@@ -102,7 +102,7 @@ class HemorrhageNet(nn.Module):
     # ==== YOUR CODE START HERE ====
     #
     # TODO: Setup your Convolutional Neural Network(s) to process potential digit or symbol data
-    self.hemorrhageNet = HemorrhageNet()
+    self.hemorrhageNet = ConvolutionNeuralNet()
     #
     # ==== YOUR CODE END HERE ====
 
