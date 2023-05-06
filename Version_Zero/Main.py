@@ -102,6 +102,7 @@ class HemorrhageNet(nn.Module):
     # ==== YOUR CODE START HERE ====
     #
     # TODO: Setup your Convolutional Neural Network(s) to process potential digit or symbol data
+    self.hemorrhageNet = HemorrhageNet()
     #
     # ==== YOUR CODE END HERE ====
 
@@ -130,7 +131,9 @@ class HemorrhageNet(nn.Module):
 
     hemorrhages = torch.cat(tuple(hemorrhage_distrs), dim=1)
 
-    result = self.compute(hemorrhages)
+    processed_hemorrhages = self.hemorrhageNet(hemorrhages)
+
+    result = self.compute(processed_hemorrhages)
 
     return result
     #
