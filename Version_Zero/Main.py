@@ -174,7 +174,7 @@ class HemorrhageTrainer():
     with torch.no_grad():
       iter = tqdm(self.test_loader, total=len(self.test_loader))
       print(iter)
-      for (image, (data, target)) in enumerate(iter):
+      for (image, [data, target]) in enumerate(iter):
         image = np.array(image)
         batch_id = int(data[0:2])
         output = self.network(image)
