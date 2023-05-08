@@ -40,14 +40,14 @@ class HemorrhageDataset(torch.utils.data.Dataset):
   def __getitem__(self, idx):
     img = self.images[idx]
 
-    image = cv2.imread("/data3/masseybr/train/" + img[0])
+    image = cv2.imread("/data3/masseybr/train/" + img[0],mode='RGB')
 
     # Convert image to tensor and normalize
     img_tensor = torchvision.transforms.ToTensor()(image)
     img_tensor = torchvision.transforms.Normalize((0.5,), (1,))(img_tensor)
     # Pass image through neural network to identify contours
     # Replace this with your own neural network model
-    contours = cv2.findContours(np.array(image), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[-2]
+    contours = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[-2]
     # Return identified contours
     return img_tensor, contours
 
