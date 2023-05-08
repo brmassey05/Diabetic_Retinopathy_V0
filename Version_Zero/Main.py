@@ -38,6 +38,7 @@ class HemorrhageDataset(torch.utils.data.Dataset):
 
   def __getitem__(self, idx):
     img = self.images[idx]
+    img = np.array(img)
     # Convert image to tensor and normalize
     img_tensor = torchvision.transforms.ToTensor()(img)
     img_tensor = torchvision.transforms.Normalize((0.5,), (1,))(img_tensor)
@@ -174,8 +175,7 @@ class HemorrhageTrainer():
     with torch.no_grad():
       iter = tqdm(self.test_loader, total=len(self.test_loader))
       print(iter)
-      for (image, [data, target]) in enumerate(iter):
-        image = np.array(image)
+      for (image, (data, target)) in enumerate(iter):
         batch_id = int(data[0:2])
         output = self.network(image)
         test_loss += self.loss(output, target).item()
