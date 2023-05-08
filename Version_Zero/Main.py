@@ -1,4 +1,5 @@
 import pandas as pd
+from PIL import Image
 import os
 import cv2
 import numpy as np
@@ -38,7 +39,7 @@ class HemorrhageDataset(torch.utils.data.Dataset):
 
   def __getitem__(self, idx):
     img = self.images[idx]
-    img = np.array(img)
+    img = Image.fromarray(img)
     # Convert image to tensor and normalize
     img_tensor = torchvision.transforms.ToTensor()(img)
     img_tensor = torchvision.transforms.Normalize((0.5,), (1,))(img_tensor)
