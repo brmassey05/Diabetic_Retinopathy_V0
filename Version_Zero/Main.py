@@ -40,7 +40,7 @@ class HemorrhageDataset(torch.utils.data.Dataset):
   def __getitem__(self, idx):
     img = self.images[idx]
     print(img)
-    img = Image.fromarray(img[0])
+    img = Image.fromarray(Image.read(img[0]))
     # Convert image to tensor and normalize
     img_tensor = torchvision.transforms.ToTensor()(img)
     img_tensor = torchvision.transforms.Normalize((0.5,), (1,))(img_tensor)
