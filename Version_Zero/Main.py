@@ -174,11 +174,12 @@ class HemorrhageTrainer():
     with torch.no_grad():
       iter = tqdm(self.test_loader, total=len(self.test_loader))
       print(iter)
-      for (batch_id, (data, target)) in enumerate(iter):
-        output = self.network(data)
+      for (image, (data, target)) in enumerate(iter):
+        batch_id = int(data[0:2])
+        output = self.network(image)
         test_loss += self.loss(output, target).item()
         avg_loss = test_loss / (batch_id + 1)
-        pred = output.data.max(1, keepdim=True)[1] - 9
+        pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).sum()
         num_items += pred.shape[0]
         perc = 100. * correct / num_items
