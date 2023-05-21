@@ -1,9 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import pandas as pd
 from PIL import Image
 
