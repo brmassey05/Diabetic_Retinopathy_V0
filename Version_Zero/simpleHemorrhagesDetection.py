@@ -5,7 +5,7 @@ import pandas as pd
 from PIL import Image
 
 # Open the image file
-image = Image.open('image.jpg')
+image = Image.open('/data3/masseybr/train/19967_right.jpeg')
 
 # Get the size of the image
 width, height = image.size
