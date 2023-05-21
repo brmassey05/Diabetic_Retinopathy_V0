@@ -103,15 +103,8 @@ class HemorrhageNet(nn.Module):
   def __init__(self):
     super(HemorrhageNet, self).__init__()
 
-    # Symbol Recognition CNN(s)
-    # ==== YOUR CODE START HERE ====
-    #
-    # TODO: Setup your Convolutional Neural Network(s) to process potential digit or symbol data
     self.hemorrhageNet = ConvolutionNeuralNet()
-    #
-    # ==== YOUR CODE END HERE ====
 
-    # Scallop Context
     self.scl_ctx = scallopy.ScallopContext("difftopkproofs")
     self.scl_ctx.add_program("""
     type hemorrhage(contour_id: usize, is_hemorrhage: bool)
@@ -122,16 +115,9 @@ class HemorrhageNet(nn.Module):
     rel severity(2) = num_hemorrhage(n), n > 2, n <= 4
     rel severity(3) = num_hemorrhage(n), n > 4
     """)
-
-    # The Scallop module to evaluate the expression, taking neural network outputs
-    # The output will be integers ranging from -9 (if you have `0 - 9`) to 81 (if you have `9 * 9`)
-    # This suggests that our `forward` function will return tensors of dimension 91
     self.compute = self.scl_ctx.forward_function("severity", output_mapping=list(range(5)))
 
   def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]):
-    # ==== YOUR CODE START HERE ====
-    #
-    # TODO: Write your code to invoke the CNNs and our Scallop module to evaluate the hand-written expression
     hemorrhage_distrs = [contour for contour in x]
 
     hemorrhages = torch.cat(tuple(hemorrhage_distrs), dim=1)
@@ -141,8 +127,6 @@ class HemorrhageNet(nn.Module):
     result = self.compute(processed_hemorrhages)
 
     return result
-    #
-    # ==== YOUR CODE END HERE ====
 
 class HemorrhageTrainer():
   def __init__(self, train_loader, test_loader, learning_rate):
